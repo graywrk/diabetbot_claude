@@ -1,0 +1,324 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+
+	"diabetbot/internal/models"
+	"diabetbot/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type APIHandler struct {
+	userService    *services.UserService
+	glucoseService *services.GlucoseService
+	foodService    *services.FoodService
+}
+
+func NewAPIHandler(db *gorm.DB) *APIHandler {
+	return &APIHandler{
+		userService:    services.NewUserService(db),
+		glucoseService: services.NewGlucoseService(db),
+		foodService:    services.NewFoodService(db),
+	}
+}
+
+// User endpoints
+func (h *APIHandler) GetUser(c *gin.Context) {
+	telegramIDStr := c.Param("telegram_id")
+	telegramID, err := strconv.ParseInt(telegramIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid telegram_id"})
+		return
+	}
+
+	user, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+func (h *APIHandler) UpdateDiabetesInfo(c *gin.Context) {
+	telegramIDStr := c.Param("telegram_id")
+	telegramID, err := strconv.ParseInt(telegramIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid telegram_id"})
+		return
+	}
+
+	user, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	var req struct {
+		DiabetesType  int     `json:"diabetes_type" binding:"required,min=1,max=2"`
+		TargetGlucose float64 `json:"target_glucose" binding:"required,min=3,max=15"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.userService.UpdateDiabetesInfo(user.ID, req.DiabetesType, req.TargetGlucose); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user info"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Diabetes info updated successfully"})
+}
+
+// Glucose endpoints
+func (h *APIHandler) GetGlucoseRecords(c *gin.Context) {
+	userID, err := strconv.ParseUint(c.Param("user_id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	days := 30 // по умолчанию 30 дней
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 && d <= 365 {
+			days = d
+		}
+	}
+
+	records, err := h.glucoseService.GetUserRecords(uint(userID), days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get glucose records"})
+		return
+	}
+
+	c.JSON(http.StatusOK, records)
+}
+
+func (h *APIHandler) CreateGlucoseRecord(c *gin.Context) {
+	var req struct {
+		UserID uint    `json:"user_id" binding:"required"`
+		Value  float64 `json:"value" binding:"required,min=1,max=30"`
+		Notes  string  `json:"notes"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	record, err := h.glucoseService.CreateRecord(req.UserID, req.Value, req.Notes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create glucose record"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, record)
+}
+
+func (h *APIHandler) UpdateGlucoseRecord(c *gin.Context) {
+	recordID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid record ID"})
+		return
+	}
+
+	var req struct {
+		UserID uint    `json:"user_id" binding:"required"`
+		Value  float64 `json:"value" binding:"required,min=1,max=30"`
+		Notes  string  `json:"notes"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.glucoseService.UpdateRecord(req.UserID, uint(recordID), req.Value, req.Notes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update glucose record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Glucose record updated successfully"})
+}
+
+func (h *APIHandler) DeleteGlucoseRecord(c *gin.Context) {
+	recordID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid record ID"})
+		return
+	}
+
+	userIDStr := c.Query("user_id")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing or invalid user_id"})
+		return
+	}
+
+	if err := h.glucoseService.DeleteRecord(uint(userID), uint(recordID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete glucose record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Glucose record deleted successfully"})
+}
+
+func (h *APIHandler) GetGlucoseStats(c *gin.Context) {
+	userID, err := strconv.ParseUint(c.Param("user_id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	days := 30
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 && d <= 365 {
+			days = d
+		}
+	}
+
+	stats, err := h.glucoseService.GetUserStats(uint(userID), days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get glucose stats"})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
+// Food endpoints
+func (h *APIHandler) GetFoodRecords(c *gin.Context) {
+	userID, err := strconv.ParseUint(c.Param("user_id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	days := 30
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 && d <= 365 {
+			days = d
+		}
+	}
+
+	var records []models.FoodRecord
+	var serviceErr error
+
+	if foodType := c.Query("type"); foodType != "" {
+		records, serviceErr = h.foodService.GetRecordsByType(uint(userID), foodType, days)
+	} else {
+		records, serviceErr = h.foodService.GetUserRecords(uint(userID), days)
+	}
+
+	if serviceErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get food records"})
+		return
+	}
+
+	c.JSON(http.StatusOK, records)
+}
+
+func (h *APIHandler) CreateFoodRecord(c *gin.Context) {
+	var req struct {
+		UserID   uint     `json:"user_id" binding:"required"`
+		FoodName string   `json:"food_name" binding:"required"`
+		FoodType string   `json:"food_type" binding:"required"`
+		Carbs    *float64 `json:"carbs"`
+		Calories *int     `json:"calories"`
+		Quantity string   `json:"quantity"`
+		Notes    string   `json:"notes"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	record, err := h.foodService.CreateRecord(
+		req.UserID, req.FoodName, req.FoodType,
+		req.Carbs, req.Calories, req.Quantity, req.Notes,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create food record"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, record)
+}
+
+func (h *APIHandler) UpdateFoodRecord(c *gin.Context) {
+	recordID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid record ID"})
+		return
+	}
+
+	var req struct {
+		UserID   uint     `json:"user_id" binding:"required"`
+		FoodName string   `json:"food_name"`
+		FoodType string   `json:"food_type"`
+		Carbs    *float64 `json:"carbs"`
+		Calories *int     `json:"calories"`
+		Quantity string   `json:"quantity"`
+		Notes    string   `json:"notes"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updates := make(map[string]interface{})
+	if req.FoodName != "" {
+		updates["food_name"] = req.FoodName
+	}
+	if req.FoodType != "" {
+		updates["food_type"] = req.FoodType
+	}
+	if req.Carbs != nil {
+		updates["carbs"] = req.Carbs
+	}
+	if req.Calories != nil {
+		updates["calories"] = req.Calories
+	}
+	if req.Quantity != "" {
+		updates["quantity"] = req.Quantity
+	}
+	if req.Notes != "" {
+		updates["notes"] = req.Notes
+	}
+
+	if err := h.foodService.UpdateRecord(req.UserID, uint(recordID), updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update food record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Food record updated successfully"})
+}
+
+func (h *APIHandler) DeleteFoodRecord(c *gin.Context) {
+	recordID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid record ID"})
+		return
+	}
+
+	userIDStr := c.Query("user_id")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing or invalid user_id"})
+		return
+	}
+
+	if err := h.foodService.DeleteRecord(uint(userID), uint(recordID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete food record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Food record deleted successfully"})
+}
