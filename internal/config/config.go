@@ -14,6 +14,7 @@ type Config struct {
 type TelegramConfig struct {
 	BotToken   string
 	WebhookURL string
+	WebAppURL  string
 }
 
 type GigaChatConfig struct {
@@ -41,6 +42,7 @@ func Load() *Config {
 		Telegram: TelegramConfig{
 			BotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
 			WebhookURL: getEnv("TELEGRAM_WEBHOOK_URL", ""),
+			WebAppURL:  getEnv("WEBAPP_URL", ""),
 		},
 		GigaChat: GigaChatConfig{
 			APIKey:  getEnv("GIGACHAT_API_KEY", ""),

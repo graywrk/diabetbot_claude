@@ -19,6 +19,7 @@ type Bot struct {
 	glucoseService  *services.GlucoseService
 	foodService     *services.FoodService
 	gigachatService *services.GigaChatService
+	config          *config.TelegramConfig
 }
 
 func NewBot(cfg *config.TelegramConfig, db *gorm.DB, gigachatService *services.GigaChatService) (*Bot, error) {
@@ -36,6 +37,7 @@ func NewBot(cfg *config.TelegramConfig, db *gorm.DB, gigachatService *services.G
 		glucoseService:  services.NewGlucoseService(db),
 		foodService:     services.NewFoodService(db),
 		gigachatService: gigachatService,
+		config:          cfg,
 	}, nil
 }
 
@@ -186,18 +188,30 @@ func (b *Bot) handleStatsCommand(message *tgbotapi.Message, user *models.User) {
 }
 
 func (b *Bot) handleWebAppCommand(message *tgbotapi.Message, user *models.User) {
-	webAppURL := fmt.Sprintf("https://yourdomain.com/webapp?user_id=%d", user.TelegramID)
+	if b.config.WebAppURL == "" {
+		b.sendMessage(message.Chat.ID, "📱 Веб-приложение временно недоступно. Обратитесь к администратору для настройки.")
+		return
+	}
+
+	webAppURL := fmt.Sprintf("%s/webapp", b.config.WebAppURL)
 	
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.InlineKeyboardButton{
-				Text: "📱 Открыть приложение",
+				Text: "📱 Открыть веб-приложение",
 				URL:  &webAppURL,
 			},
 		),
 	)
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, "📱 Нажмите на кнопку ниже, чтобы открыть веб-приложение:")
+	msg := tgbotapi.NewMessage(message.Chat.ID, `📱 Веб-приложение DiabetBot
+
+🔹 Подробная статистика и графики
+🔹 Управление записями глюкозы и питания  
+🔹 Персонализированные рекомендации
+🔹 Экспорт данных
+
+Нажмите кнопку ниже для открытия:`)
 	msg.ReplyMarkup = keyboard
 	b.api.Send(msg)
 }
