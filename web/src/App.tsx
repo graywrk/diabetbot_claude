@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { initTelegramWebApp, getTelegramUser } from './utils/telegram'
 import { ApiService } from './services/api'

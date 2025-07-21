@@ -4,9 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import Navigation from '../Navigation'
 
 // Wrapper component for router
-const NavigationWrapper: React.FC<{ initialPath?: string }> = ({ 
-  initialPath = '/' 
-}) => (
+const NavigationWrapper: React.FC = () => (
   <BrowserRouter>
     <div>
       <Navigation />

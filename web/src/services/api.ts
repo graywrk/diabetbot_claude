@@ -24,6 +24,18 @@ export class ApiService {
     })
   }
 
+  static async updateUser(telegramId: number, updates: {
+    target_glucose?: number | null
+    notifications?: boolean
+  }): Promise<User> {
+    const response = await api.put(`/user/${telegramId}`, updates)
+    return response.data
+  }
+
+  static async deleteUserData(telegramId: number): Promise<void> {
+    await api.delete(`/user/${telegramId}/data`)
+  }
+
   // Glucose methods
   static async getGlucoseRecords(userId: number, days = 30): Promise<GlucoseRecord[]> {
     const response = await api.get(`/glucose/${userId}?days=${days}`)

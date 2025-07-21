@@ -8,6 +8,7 @@ export interface User {
   is_active: boolean
   diabetes_type?: number
   target_glucose?: number
+  notifications?: boolean
   created_at: string
   updated_at: string
 }

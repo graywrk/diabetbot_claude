@@ -1,5 +1,5 @@
 import { ApiService } from '../api'
-import axios from 'axios'
+import axios, { AxiosInstance } from 'axios'
 
 // Mock axios
 jest.mock('axios', () => ({
@@ -8,6 +8,13 @@ jest.mock('axios', () => ({
     post: jest.fn(),
     put: jest.fn(),
     delete: jest.fn(),
+    defaults: {},
+    interceptors: { request: { use: jest.fn() }, response: { use: jest.fn() } },
+    getUri: jest.fn(),
+    request: jest.fn(),
+    head: jest.fn(),
+    options: jest.fn(),
+    patch: jest.fn(),
   })),
 }))
 
@@ -17,7 +24,14 @@ const mockAxiosInstance = {
   post: jest.fn(),
   put: jest.fn(),
   delete: jest.fn(),
-}
+  defaults: {},
+  interceptors: { request: { use: jest.fn() }, response: { use: jest.fn() } },
+  getUri: jest.fn(),
+  request: jest.fn(),
+  head: jest.fn(),
+  options: jest.fn(),
+  patch: jest.fn(),
+} as unknown as jest.Mocked<AxiosInstance>
 
 mockAxios.create.mockReturnValue(mockAxiosInstance)
 
@@ -74,7 +88,7 @@ describe('ApiService', () => {
     })
 
     test('getGlucoseRecords makes correct API call with custom days', async () => {
-      const mockRecords = []
+      const mockRecords: any[] = []
       mockAxiosInstance.get.mockResolvedValue({ data: mockRecords })
 
       await ApiService.getGlucoseRecords(1, 7)
@@ -170,7 +184,7 @@ describe('ApiService', () => {
     })
 
     test('getFoodRecords makes correct API call with type filter', async () => {
-      const mockRecords = []
+      const mockRecords: any[] = []
       mockAxiosInstance.get.mockResolvedValue({ data: mockRecords })
 
       await ApiService.getFoodRecords(1, 7, 'завтрак')
