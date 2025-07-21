@@ -75,6 +75,82 @@ func (h *APIHandler) UpdateDiabetesInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Diabetes info updated successfully"})
 }
 
+func (h *APIHandler) UpdateUser(c *gin.Context) {
+	telegramIDStr := c.Param("telegram_id")
+	telegramID, err := strconv.ParseInt(telegramIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid telegram_id"})
+		return
+	}
+
+	user, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	var req struct {
+		TargetGlucose *float64 `json:"target_glucose"`
+		Notifications *bool    `json:"notifications"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Обновляем только переданные поля
+	updates := make(map[string]interface{})
+	if req.TargetGlucose != nil {
+		updates["target_glucose"] = req.TargetGlucose
+	}
+	if req.Notifications != nil {
+		updates["notifications"] = req.Notifications
+	}
+
+	if err := h.userService.UpdateUser(user.ID, updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+
+	// Получаем обновленного пользователя
+	updatedUser, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get updated user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedUser)
+}
+
+func (h *APIHandler) DeleteUserData(c *gin.Context) {
+	telegramIDStr := c.Param("telegram_id")
+	telegramID, err := strconv.ParseInt(telegramIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid telegram_id"})
+		return
+	}
+
+	user, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Удаляем все данные пользователя (glucose records, food records)
+	if err := h.glucoseService.DeleteAllUserRecords(user.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete glucose records"})
+		return
+	}
+
+	if err := h.foodService.DeleteAllUserRecords(user.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete food records"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User data deleted successfully"})
+}
+
 // Glucose endpoints
 func (h *APIHandler) GetGlucoseRecords(c *gin.Context) {
 	userID, err := strconv.ParseUint(c.Param("user_id"), 10, 32)

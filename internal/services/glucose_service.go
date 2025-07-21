@@ -89,3 +89,7 @@ func (s *GlucoseService) UpdateRecord(userID, recordID uint, value float64, note
 			"notes": notes,
 		}).Error
 }
+
+func (s *GlucoseService) DeleteAllUserRecords(userID uint) error {
+	return s.db.Where("user_id = ?", userID).Delete(&models.GlucoseRecord{}).Error
+}

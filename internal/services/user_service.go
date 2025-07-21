@@ -71,3 +71,7 @@ func (s *UserService) UpdateDiabetesInfo(userID uint, diabetesType int, targetGl
 		"target_glucose":  targetGlucose,
 	}).Error
 }
+
+func (s *UserService) UpdateUser(userID uint, updates map[string]interface{}) error {
+	return s.db.Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
+}

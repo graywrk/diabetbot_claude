@@ -96,3 +96,7 @@ func (s *FoodService) GetTodayCarbs(userID uint) (float64, error) {
 	
 	return totalCarbs, err
 }
+
+func (s *FoodService) DeleteAllUserRecords(userID uint) error {
+	return s.db.Where("user_id = ?", userID).Delete(&models.FoodRecord{}).Error
+}

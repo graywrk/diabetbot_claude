@@ -21,6 +21,7 @@ type User struct {
 	// Medical information
 	DiabetesType   *int           `json:"diabetes_type" gorm:"check:diabetes_type IN (1,2)"`
 	TargetGlucose  *float64       `json:"target_glucose"` // mmol/L
+	Notifications  *bool          `json:"notifications" gorm:"default:true"`
 	
 	// Relations
 	GlucoseRecords []GlucoseRecord `json:"glucose_records" gorm:"foreignKey:UserID"`

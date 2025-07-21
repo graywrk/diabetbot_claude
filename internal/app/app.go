@@ -108,7 +108,9 @@ func (a *App) setupServer() error {
 	api := router.Group("/api/v1")
 	{
 		api.GET("/user/:telegram_id", apiHandler.GetUser)
+		api.PUT("/user/:telegram_id", apiHandler.UpdateUser)
 		api.PUT("/user/:telegram_id/diabetes-info", apiHandler.UpdateDiabetesInfo)
+		api.DELETE("/user/:telegram_id/data", apiHandler.DeleteUserData)
 		
 		api.GET("/glucose/:user_id", apiHandler.GetGlucoseRecords)
 		api.POST("/glucose", apiHandler.CreateGlucoseRecord)
@@ -124,8 +126,15 @@ func (a *App) setupServer() error {
 
 	// Статические файлы для веб-приложения
 	router.Static("/webapp", "./web/dist")
-	router.GET("/webapp/*any", func(c *gin.Context) {
-		c.File("./web/dist/index.html")
+	
+	// SPA fallback - обслуживает index.html для всех маршрутов веб-приложения
+	router.NoRoute(func(c *gin.Context) {
+		// Если путь начинается с /webapp/ но файл не найден, отдаем index.html для SPA маршрутизации
+		if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/webapp" {
+			c.File("./web/dist/index.html")
+		} else {
+			c.JSON(404, gin.H{"error": "Not found"})
+		}
 	})
 
 	// Health check
