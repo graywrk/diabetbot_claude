@@ -19,7 +19,7 @@ import (
 func TestGigaChatService_Authenticate(t *testing.T) {
 	// Mock server for GigaChat API
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth" {
+		if r.URL.Path == "/api/v1/oauth" {
 			if r.Header.Get("Authorization") == "Basic test_api_key" {
 				response := AuthResponse{
 					AccessToken: "test_access_token",
@@ -65,13 +65,13 @@ func TestGigaChatService_SendChatRequest(t *testing.T) {
 	// Mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/oauth":
+		case "/api/v1/oauth":
 			response := AuthResponse{
 				AccessToken: "test_token",
 				ExpiresIn:   3600,
 			}
 			json.NewEncoder(w).Encode(response)
-		case "/chat/completions":
+		case "/api/v2/chat/completions":
 			if r.Header.Get("Authorization") != "Bearer test_token" {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -129,13 +129,13 @@ func TestGigaChatService_GetGlucoseRecommendation(t *testing.T) {
 	// Mock server with realistic response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/oauth":
+		case "/api/v1/oauth":
 			response := AuthResponse{
 				AccessToken: "test_token",
 				ExpiresIn:   3600,
 			}
 			json.NewEncoder(w).Encode(response)
-		case "/chat/completions":
+		case "/api/v2/chat/completions":
 			response := ChatResponse{
 				Choices: []Choice{
 					{
@@ -222,13 +222,13 @@ func TestGigaChatService_GetGlucoseRecommendation(t *testing.T) {
 func TestGigaChatService_GetFoodRecommendation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/oauth":
+		case "/api/v1/oauth":
 			response := AuthResponse{
 				AccessToken: "test_token",
 				ExpiresIn:   3600,
 			}
 			json.NewEncoder(w).Encode(response)
-		case "/chat/completions":
+		case "/api/v2/chat/completions":
 			response := ChatResponse{
 				Choices: []Choice{
 					{
@@ -287,13 +287,13 @@ func TestGigaChatService_GetFoodRecommendation(t *testing.T) {
 func TestGigaChatService_GetGeneralRecommendation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/oauth":
+		case "/api/v1/oauth":
 			response := AuthResponse{
 				AccessToken: "test_token",
 				ExpiresIn:   3600,
 			}
 			json.NewEncoder(w).Encode(response)
-		case "/chat/completions":
+		case "/api/v2/chat/completions":
 			response := ChatResponse{
 				Choices: []Choice{
 					{

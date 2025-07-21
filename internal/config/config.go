@@ -44,7 +44,7 @@ func Load() *Config {
 		},
 		GigaChat: GigaChatConfig{
 			APIKey:  getEnv("GIGACHAT_API_KEY", ""),
-			BaseURL: getEnv("GIGACHAT_BASE_URL", "https://gigachat.devices.sberbank.ru/api/v1"),
+			BaseURL: getEnv("GIGACHAT_BASE_URL", "https://gigachat.devices.sberbank.ru"),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),

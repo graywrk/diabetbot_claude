@@ -32,12 +32,13 @@ type AuthResponse struct {
 type ChatRequest struct {
 	Model             string    `json:"model"`
 	Messages          []Message `json:"messages"`
-	Temperature       float64   `json:"temperature"`
-	TopP             float64   `json:"top_p"`
-	N                int       `json:"n"`
-	Stream           bool      `json:"stream"`
-	MaxTokens        int       `json:"max_tokens"`
-	RepetitionPenalty float64  `json:"repetition_penalty"`
+	Temperature       float64   `json:"temperature,omitempty"`
+	TopP             float64   `json:"top_p,omitempty"`
+	N                int       `json:"n,omitempty"`
+	Stream           bool      `json:"stream,omitempty"`
+	MaxTokens        int       `json:"max_tokens,omitempty"`
+	RepetitionPenalty float64  `json:"repetition_penalty,omitempty"`
+	UpdateInterval   int       `json:"update_interval,omitempty"`
 }
 
 type Message struct {
@@ -50,6 +51,7 @@ type ChatResponse struct {
 	Usage   Usage    `json:"usage"`
 	Created int64    `json:"created"`
 	Model   string   `json:"model"`
+	Object  string   `json:"object"`
 }
 
 type Choice struct {
@@ -85,7 +87,7 @@ func (s *GigaChatService) authenticate() error {
 		return fmt.Errorf("failed to marshal auth request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", s.baseURL+"/oauth", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", s.baseURL+"/api/v1/oauth", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create auth request: %w", err)
 	}
@@ -126,7 +128,7 @@ func (s *GigaChatService) sendChatRequest(messages []Message) (string, error) {
 	}
 
 	chatReq := ChatRequest{
-		Model:             "GigaChat",
+		Model:             "GigaChat:latest",
 		Messages:          messages,
 		Temperature:       0.7,
 		TopP:             0.9,
@@ -141,7 +143,7 @@ func (s *GigaChatService) sendChatRequest(messages []Message) (string, error) {
 		return "", fmt.Errorf("failed to marshal chat request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", s.baseURL+"/chat/completions", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", s.baseURL+"/api/v2/chat/completions", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create chat request: %w", err)
 	}
