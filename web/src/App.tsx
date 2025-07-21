@@ -20,14 +20,20 @@ function App() {
       try {
         // Инициализация Telegram Web App
         const webApp = initTelegramWebApp()
+        let telegramUser = webApp ? getTelegramUser(webApp) : null
         
-        if (!webApp?.initDataUnsafe?.user) {
-          throw new Error('Не удалось получить данные пользователя из Telegram')
+        // Fallback для разработки - если WebApp недоступен, используем тестового пользователя
+        if (!telegramUser && process.env.NODE_ENV === 'development') {
+          telegramUser = {
+            id: 123456789,
+            first_name: 'Test User',
+            username: 'testuser',
+            language_code: 'ru'
+          }
         }
-
-        const telegramUser = getTelegramUser(webApp)
+        
         if (!telegramUser) {
-          throw new Error('Неверные данные пользователя')
+          throw new Error('Не удалось получить данные пользователя из Telegram')
         }
 
         // Получаем или создаем пользователя через API
@@ -35,7 +41,7 @@ function App() {
         setUser(userData)
         
         // Настраиваем тему Telegram
-        if (webApp.themeParams) {
+        if (webApp?.themeParams) {
           document.documentElement.style.setProperty('--tg-theme-bg-color', webApp.themeParams.bg_color || '#ffffff')
           document.documentElement.style.setProperty('--tg-theme-text-color', webApp.themeParams.text_color || '#000000')
           document.documentElement.style.setProperty('--tg-theme-button-color', webApp.themeParams.button_color || '#007AFF')
@@ -44,8 +50,10 @@ function App() {
         }
 
         // Показываем веб-приложение
-        webApp.ready()
-        webApp.expand()
+        if (webApp) {
+          webApp.ready()
+          webApp.expand()
+        }
         
       } catch (err) {
         console.error('Ошибка инициализации:', err)

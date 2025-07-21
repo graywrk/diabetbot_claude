@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { User, GlucoseRecord, FoodRecord, GlucoseStats } from '../types'
+import { initTelegramWebApp, getTelegramUser } from '../utils/telegram'
 
 const API_BASE_URL = '/api/v1'
 
@@ -8,6 +9,31 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+// Interceptor для добавления Telegram данных в заголовки
+api.interceptors.request.use((config) => {
+  const webApp = initTelegramWebApp()
+  let telegramUser = webApp ? getTelegramUser(webApp) : null
+  
+  // Fallback для разработки
+  if (!telegramUser && process.env.NODE_ENV === 'development') {
+    telegramUser = {
+      id: 123456789,
+      first_name: 'Test User',
+      username: 'testuser',
+      language_code: 'ru'
+    }
+  }
+  
+  if (telegramUser) {
+    config.headers['X-Telegram-Username'] = telegramUser.username || ''
+    config.headers['X-Telegram-First-Name'] = telegramUser.first_name || ''
+    config.headers['X-Telegram-Last-Name'] = telegramUser.last_name || ''
+    config.headers['X-Telegram-Language-Code'] = telegramUser.language_code || ''
+  }
+  
+  return config
 })
 
 export class ApiService {

@@ -36,7 +36,25 @@ func (h *APIHandler) GetUser(c *gin.Context) {
 
 	user, err := h.userService.GetByTelegramID(telegramID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		// Если пользователь не найден, создаем его из данных Telegram WebApp
+		if err == gorm.ErrRecordNotFound {
+			// Получаем данные из заголовков для создания пользователя
+			username := c.GetHeader("X-Telegram-Username")
+			firstName := c.GetHeader("X-Telegram-First-Name") 
+			lastName := c.GetHeader("X-Telegram-Last-Name")
+			languageCode := c.GetHeader("X-Telegram-Language-Code")
+			
+			// Создаем нового пользователя
+			user, err = h.userService.GetOrCreateUser(telegramID, username, firstName, lastName, languageCode)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+				return
+			}
+			
+			c.JSON(http.StatusCreated, user)
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
 		return
 	}
 
