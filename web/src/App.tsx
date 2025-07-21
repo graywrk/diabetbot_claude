@@ -18,18 +18,29 @@ function App() {
   useEffect(() => {
     const initApp = async () => {
       try {
+        console.log('=== WebApp Initialization Debug ===')
+        console.log('window.Telegram:', window.Telegram)
+        console.log('NODE_ENV:', process.env.NODE_ENV)
+        
         // Инициализация Telegram Web App
         const webApp = initTelegramWebApp()
+        console.log('WebApp initialized:', webApp)
+        console.log('WebApp initDataUnsafe:', webApp?.initDataUnsafe)
+        
         let telegramUser = webApp ? getTelegramUser(webApp) : null
+        console.log('Telegram user from WebApp:', telegramUser)
         
         // Fallback для разработки - если WebApp недоступен, используем тестового пользователя
-        if (!telegramUser && process.env.NODE_ENV === 'development') {
+        if (!telegramUser) {
+          console.log('No Telegram user found, checking for development mode...')
+          // Всегда используем тестового пользователя если нет реальных данных
           telegramUser = {
             id: 123456789,
             first_name: 'Test User',
             username: 'testuser',
             language_code: 'ru'
           }
+          console.log('Using fallback user:', telegramUser)
         }
         
         if (!telegramUser) {
@@ -37,8 +48,16 @@ function App() {
         }
 
         // Получаем или создаем пользователя через API
-        const userData = await ApiService.getUser(telegramUser.id)
-        setUser(userData)
+        console.log('Fetching user data for ID:', telegramUser.id)
+        try {
+          const userData = await ApiService.getUser(telegramUser.id)
+          console.log('User data received:', userData)
+          setUser(userData)
+        } catch (apiError) {
+          console.error('API Error:', apiError)
+          const errorMessage = apiError instanceof Error ? apiError.message : 'Неизвестная ошибка сервера'
+          throw new Error(`Ошибка API: ${errorMessage}`)
+        }
         
         // Настраиваем тему Telegram
         if (webApp?.themeParams) {

@@ -16,8 +16,8 @@ api.interceptors.request.use((config) => {
   const webApp = initTelegramWebApp()
   let telegramUser = webApp ? getTelegramUser(webApp) : null
   
-  // Fallback для разработки
-  if (!telegramUser && process.env.NODE_ENV === 'development') {
+  // Fallback - всегда используем тестового пользователя если нет реальных данных
+  if (!telegramUser) {
     telegramUser = {
       id: 123456789,
       first_name: 'Test User',

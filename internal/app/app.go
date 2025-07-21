@@ -48,25 +48,29 @@ func (a *App) Run() error {
 	// Инициализация сервисов
 	gigachatService := services.NewGigaChatService(&a.config.GigaChat)
 	
-	// Инициализация бота
-	bot, err := telegram.NewBot(&a.config.Telegram, db.DB, gigachatService)
-	if err != nil {
-		return fmt.Errorf("failed to initialize bot: %w", err)
-	}
-	a.bot = bot
-
-	// Инициализация веб-сервера
+	// Инициализация веб-сервера (всегда запускается)
 	if err := a.setupServer(); err != nil {
 		return fmt.Errorf("failed to setup server: %w", err)
 	}
 
-	// Запуск бота в горутине
-	go func() {
-		log.Println("Starting Telegram bot...")
-		if err := a.bot.Start(); err != nil {
-			log.Printf("Bot error: %v", err)
+	// Инициализация бота (только если есть токен)
+	if a.config.Telegram.BotToken != "" {
+		bot, err := telegram.NewBot(&a.config.Telegram, db.DB, gigachatService)
+		if err != nil {
+			log.Printf("Failed to initialize bot (continuing without bot): %v", err)
+		} else {
+			a.bot = bot
+			// Запуск бота в горутине
+			go func() {
+				log.Println("Starting Telegram bot...")
+				if err := a.bot.Start(); err != nil {
+					log.Printf("Bot error: %v", err)
+				}
+			}()
 		}
-	}()
+	} else {
+		log.Println("No Telegram bot token provided, running web server only")
+	}
 
 	// Запуск веб-сервера в горутине
 	go func() {
