@@ -30,6 +30,7 @@ func NewBot(cfg *config.TelegramConfig, db *gorm.DB, gigachatService *services.G
 
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+	log.Printf("WebApp URL configured: %s", cfg.WebAppURL)
 
 	return &Bot{
 		api:             bot,
@@ -194,6 +195,7 @@ func (b *Bot) handleWebAppCommand(message *tgbotapi.Message, user *models.User) 
 	}
 
 	webAppURL := fmt.Sprintf("%s/webapp", b.config.WebAppURL)
+	log.Printf("WebApp URL generated: %s (from config: %s)", webAppURL, b.config.WebAppURL)
 	
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
