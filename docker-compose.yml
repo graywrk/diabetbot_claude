@@ -43,18 +43,14 @@ services:
     volumes:
       - ./logs:/app/logs
 
-  nginx:
-    image: nginx:alpine
-    restart: unless-stopped
-    depends_on:
-      - app
+  caddy:
+    image: caddy:2.7.4
+    restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    command: [nginx-debug, '-g', 'daemon off;']
+      - ./Caddyfile:/etc/caddy/Caddyfile
 
 volumes:
   postgres_data:
