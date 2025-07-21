@@ -69,6 +69,8 @@ func (b *Bot) handleMessage(message *tgbotapi.Message) {
 		b.handleCommand(message, user)
 	case isNumeric(message.Text):
 		b.handleGlucoseInput(message, user)
+	case b.isKeyboardButton(message.Text):
+		b.handleKeyboardButton(message, user)
 	default:
 		b.handleTextMessage(message, user)
 	}
@@ -98,39 +100,55 @@ func (b *Bot) handleStartCommand(message *tgbotapi.Message, user *models.User) {
 
 Я помогу вам контролировать уровень сахара в крови и питание.
 
-Основные команды:
-🩸 /glucose - записать уровень сахара
-🍽 /food - записать прием пищи
-📊 /stats - показать статистику
-📱 /webapp - открыть веб-приложение
-❓ /help - помощь
+Используйте кнопки ниже для быстрого доступа к функциям или просто отправьте мне:
+• Число (уровень глюкозы, например: 5.6)
+• Описание еды (что съели)
+• Вопрос о диабете
 
-Вы также можете просто отправить мне число (уровень глюкозы) или описание еды.`, user.FirstName)
+Для подробной работы откройте веб-приложение! 📱`, user.FirstName)
 
-	b.sendMessage(message.Chat.ID, text)
+	keyboard := b.getMainKeyboard()
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg.ReplyMarkup = keyboard
+	b.api.Send(msg)
 }
 
 func (b *Bot) handleHelpCommand(message *tgbotapi.Message) {
-	text := `📋 Список команд:
+	text := `📋 Как пользоваться ботом:
 
-🩸 /glucose - Записать показания глюкометра
-🍽 /food - Записать информацию о приеме пищи
-📊 /stats - Показать статистику за период
-📱 /webapp - Открыть веб-приложение с подробной статистикой
+🔘 Используйте кнопки ниже для быстрого доступа
+🔘 Или просто напишите мне:
+  • Число (например, 5.6) - записать уровень сахара
+  • Описание еды - записать в дневник питания
+  • Вопрос о диабете - получить рекомендацию от ИИ
 
-💡 Быстрые действия:
-• Отправьте число (например, 5.6) чтобы записать уровень сахара
-• Опишите что ели и я помогу записать это в дневник
-• Задайте вопрос о диабете - получите рекомендации от ИИ
+📱 Веб-приложение:
+Для подробной статистики, графиков и управления данными используйте веб-приложение - нажмите кнопку "📱 Веб-приложение"
 
-Для детальной работы с данными используйте веб-приложение /webapp`
+🤖 ИИ помощник:
+Бот анализирует ваши данные и дает персональные рекомендации на основе уровня сахара и питания.`
 
-	b.sendMessage(message.Chat.ID, text)
+	keyboard := b.getMainKeyboard()
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg.ReplyMarkup = keyboard
+	b.api.Send(msg)
 }
 
 func (b *Bot) handleGlucoseCommand(message *tgbotapi.Message) {
-	text := "🩸 Отправьте показания глюкометра (например: 5.6)"
-	b.sendMessage(message.Chat.ID, text)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🌅 До еды", "glucose_before"),
+			tgbotapi.NewInlineKeyboardButtonData("🍽 После еды", "glucose_after"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🌅 Утром натощак", "glucose_morning"),
+			tgbotapi.NewInlineKeyboardButtonData("🌙 Перед сном", "glucose_night"),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, "🩸 Выберите время измерения или просто отправьте число (например: 5.6):")
+	msg.ReplyMarkup = keyboard
+	b.api.Send(msg)
 }
 
 func (b *Bot) handleFoodCommand(message *tgbotapi.Message) {
@@ -151,23 +169,20 @@ func (b *Bot) handleFoodCommand(message *tgbotapi.Message) {
 }
 
 func (b *Bot) handleStatsCommand(message *tgbotapi.Message, user *models.User) {
-	stats, err := b.glucoseService.GetUserStats(user.ID, 7) // последние 7 дней
-	if err != nil {
-		b.sendMessage(message.Chat.ID, "Ошибка получения статистики")
-		return
-	}
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📅 1 день", "stats_1"),
+			tgbotapi.NewInlineKeyboardButtonData("📅 7 дней", "stats_7"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📅 30 дней", "stats_30"),
+			tgbotapi.NewInlineKeyboardButtonData("📅 90 дней", "stats_90"),
+		),
+	)
 
-	text := fmt.Sprintf(`📊 Статистика за 7 дней:
-
-📈 Средний уровень: %.1f ммоль/л
-📉 Минимум: %.1f ммоль/л  
-📊 Максимум: %.1f ммоль/л
-🔢 Всего измерений: %d
-
-Для подробной статистики используйте /webapp`, 
-		stats.Average, stats.Min, stats.Max, stats.Count)
-
-	b.sendMessage(message.Chat.ID, text)
+	msg := tgbotapi.NewMessage(message.Chat.ID, "📊 Выберите период для статистики:")
+	msg.ReplyMarkup = keyboard
+	b.api.Send(msg)
 }
 
 func (b *Bot) handleWebAppCommand(message *tgbotapi.Message, user *models.User) {
@@ -249,10 +264,21 @@ func (b *Bot) handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) {
 
 	data := callbackQuery.Data
 	chatID := callbackQuery.Message.Chat.ID
+	
+	// Получаем пользователя для callback query
+	user, err := b.userService.GetByTelegramID(callbackQuery.From.ID)
+	if err != nil {
+		log.Printf("Error getting user for callback: %v", err)
+		return
+	}
 
 	switch {
-	case data[:4] == "food":
+	case len(data) >= 4 && data[:4] == "food":
 		b.handleFoodTypeSelection(chatID, data[5:])
+	case len(data) >= 7 && data[:7] == "glucose":
+		b.handleGlucosePeriodSelection(chatID, data[8:], user)
+	case len(data) >= 5 && data[:5] == "stats":
+		b.handleStatsSelection(chatID, data[6:], user)
 	}
 }
 
@@ -313,4 +339,145 @@ func containsMiddle(text, substr string) bool {
 		}
 	}
 	return false
+}
+
+// getMainKeyboard возвращает основную клавиатуру
+func (b *Bot) getMainKeyboard() tgbotapi.ReplyKeyboardMarkup {
+	return tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("🩸 Записать глюкозу"),
+			tgbotapi.NewKeyboardButton("🍽 Записать еду"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("📊 Статистика"),
+			tgbotapi.NewKeyboardButton("📱 Веб-приложение"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("❓ Помощь"),
+			tgbotapi.NewKeyboardButton("🔄 Главное меню"),
+		),
+	)
+}
+
+// isKeyboardButton проверяет, является ли текст кнопкой клавиатуры
+func (b *Bot) isKeyboardButton(text string) bool {
+	buttons := []string{
+		"🩸 Записать глюкозу",
+		"🍽 Записать еду", 
+		"📊 Статистика",
+		"📱 Веб-приложение",
+		"❓ Помощь",
+		"🔄 Главное меню",
+	}
+	
+	for _, button := range buttons {
+		if text == button {
+			return true
+		}
+	}
+	return false
+}
+
+// handleKeyboardButton обрабатывает нажатие кнопки клавиатуры
+func (b *Bot) handleKeyboardButton(message *tgbotapi.Message, user *models.User) {
+	switch message.Text {
+	case "🩸 Записать глюкозу":
+		b.handleGlucoseCommand(message)
+	case "🍽 Записать еду":
+		b.handleFoodCommand(message)
+	case "📊 Статистика":
+		b.handleStatsCommand(message, user)
+	case "📱 Веб-приложение":
+		b.handleWebAppCommand(message, user)
+	case "❓ Помощь":
+		b.handleHelpCommand(message)
+	case "🔄 Главное меню":
+		b.handleStartCommand(message, user)
+	}
+}
+
+// handleGlucosePeriodSelection обрабатывает выбор периода измерения глюкозы
+func (b *Bot) handleGlucosePeriodSelection(chatID int64, period string, user *models.User) {
+	var periodText string
+	switch period {
+	case "before":
+		periodText = "до еды"
+	case "after":
+		periodText = "после еды"
+	case "morning":
+		periodText = "утром натощак"
+	case "night":
+		periodText = "перед сном"
+	default:
+		periodText = "общее измерение"
+	}
+
+	text := fmt.Sprintf("🩸 Отправьте показания глюкометра (%s)\nНапример: 5.6", periodText)
+	
+	// Сохраняем контекст периода для следующего сообщения пользователя
+	// В реальном приложении это можно сохранить в базе или кэше
+	b.sendMessage(chatID, text)
+}
+
+// handleStatsSelection обрабатывает выбор периода статистики
+func (b *Bot) handleStatsSelection(chatID int64, period string, user *models.User) {
+	days, err := strconv.Atoi(period)
+	if err != nil {
+		b.sendMessage(chatID, "Ошибка обработки периода")
+		return
+	}
+
+	stats, err := b.glucoseService.GetUserStats(user.ID, days)
+	if err != nil {
+		b.sendMessage(chatID, "Ошибка получения статистики")
+		return
+	}
+
+	if stats.Count == 0 {
+		text := fmt.Sprintf("📊 Статистика за %d дней:\n\n❌ Нет данных за выбранный период\n\nНачните записывать показания глюкозы!", days)
+		b.sendMessage(chatID, text)
+		return
+	}
+
+	var periodText string
+	switch days {
+	case 1:
+		periodText = "сегодня"
+	case 7:
+		periodText = "за неделю"
+	case 30:
+		periodText = "за месяц"
+	case 90:
+		periodText = "за 3 месяца"
+	default:
+		periodText = fmt.Sprintf("за %d дней", days)
+	}
+
+	// Определяем статус по среднему уровню
+	var statusEmoji, statusText string
+	if stats.Average <= 5.5 {
+		statusEmoji = "✅"
+		statusText = "Отличный контроль!"
+	} else if stats.Average <= 7.0 {
+		statusEmoji = "⚠️"
+		statusText = "Хороший контроль, но можно улучшить"
+	} else {
+		statusEmoji = "❗"
+		statusText = "Требуется внимание"
+	}
+
+	text := fmt.Sprintf(`📊 Статистика %s:
+
+📈 Средний уровень: %.1f ммоль/л %s
+📉 Минимум: %.1f ммоль/л  
+📊 Максимум: %.1f ммоль/л
+🔢 Всего измерений: %d
+
+%s %s
+
+💡 Для подробных графиков и трендов используйте веб-приложение`, 
+		periodText, stats.Average, statusEmoji, stats.Min, stats.Max, stats.Count,
+		statusEmoji, statusText)
+
+	b.sendMessage(chatID, text)
 }
