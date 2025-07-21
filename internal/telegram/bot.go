@@ -30,7 +30,6 @@ func NewBot(cfg *config.TelegramConfig, db *gorm.DB, gigachatService *services.G
 
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
-	log.Printf("WebApp URL configured: %s", cfg.WebAppURL)
 
 	return &Bot{
 		api:             bot,

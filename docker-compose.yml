@@ -33,6 +33,7 @@ services:
       - DB_SSLMODE=disable
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL}
+      - WEBAPP_URL=${WEBAPP_URL}
       - GIGACHAT_API_KEY=${GIGACHAT_API_KEY}
       - GIGACHAT_BASE_URL=https://gigachat.devices.sberbank.ru/api/v1
       - SERVER_PORT=8080
