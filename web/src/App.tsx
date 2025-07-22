@@ -21,19 +21,27 @@ function App() {
         console.log('=== WebApp Initialization Debug ===')
         console.log('window.Telegram:', window.Telegram)
         console.log('NODE_ENV:', process.env.NODE_ENV)
+        console.log('window.location:', window.location.href)
         
         // Инициализация Telegram Web App
         const webApp = initTelegramWebApp()
         console.log('WebApp initialized:', webApp)
         console.log('WebApp initDataUnsafe:', webApp?.initDataUnsafe)
+        console.log('WebApp initData (raw):', (webApp as any)?.initData)
         
         let telegramUser = webApp ? getTelegramUser(webApp) : null
         console.log('Telegram user from WebApp:', telegramUser)
         
-        // Fallback для разработки - если WebApp недоступен, используем тестового пользователя
-        if (!telegramUser) {
-          console.log('No Telegram user found, checking for development mode...')
-          // Всегда используем тестового пользователя если нет реальных данных
+        // Дополнительная отладочная информация
+        if (webApp) {
+          console.log('WebApp platform:', (webApp as any).platform)
+          console.log('WebApp version:', (webApp as any).version)
+          console.log('WebApp isExpanded:', (webApp as any).isExpanded)
+        }
+        
+        // Fallback только для development режима, когда WebApp действительно недоступен
+        if (!telegramUser && process.env.NODE_ENV === 'development') {
+          console.log('No Telegram user found, using development fallback...')
           telegramUser = {
             id: 123456789,
             first_name: 'Test User',
