@@ -39,8 +39,9 @@ services:
       - SERVER_PORT=8080
       - SERVER_HOST=0.0.0.0
       - ENVIRONMENT=production
-    ports:
-      - "8080:8080"
+    # Порт 8080 теперь используется Caddy
+    # ports:
+    #   - "8080:8080"
     volumes:
       - ./logs:/app/logs
 
@@ -48,7 +49,7 @@ services:
     image: caddy:2.7.4-alpine
     restart: always
     ports:
-      - 80:80
+      - 8080:80
       - 443:443
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
