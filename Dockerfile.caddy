@@ -1,0 +1,34 @@
+FROM golang:1.23-alpine AS builder
+
+# Install xcaddy
+RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+# Build Caddy with Cloudflare DNS plugin
+RUN xcaddy build v2.7.5 \
+    --with github.com/caddy-dns/cloudflare
+
+FROM alpine:3.18
+
+RUN apk add --no-cache ca-certificates tzdata
+
+# Copy the custom-built Caddy binary
+COPY --from=builder /go/caddy /usr/bin/caddy
+
+# Ensure Caddy is executable
+RUN chmod +x /usr/bin/caddy
+
+# Create directory for Caddy configuration
+RUN mkdir -p /etc/caddy /data /config
+
+# Set up proper user
+RUN addgroup -S -g 1000 caddy && \
+    adduser -S -u 1000 -g caddy -h /etc/caddy -s /sbin/nologin -D caddy
+
+# Change ownership
+RUN chown -R caddy:caddy /etc/caddy /data /config
+
+USER caddy
+
+EXPOSE 80 443 2019
+
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

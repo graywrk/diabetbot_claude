@@ -1,3 +1,24 @@
-diabetbot.graywrk.ru {
+{
+    # Глобально отключаем автоматический HTTPS (используем Cloudflare)
+    auto_https off
+}
+
+# Принимаем все запросы на порт 80
+:80 {
+    # Проксируем все запросы к приложению
     reverse_proxy app:8080
+    
+    # Добавляем заголовки для безопасности
+    header {
+        # Отключаем HSTS (Cloudflare управляет SSL)
+        -Strict-Transport-Security
+        # Предотвращаем clickjacking  
+        X-Frame-Options SAMEORIGIN
+        # Отключаем MIME type sniffing
+        X-Content-Type-Options nosniff
+        # Включаем XSS защиту
+        X-XSS-Protection "1; mode=block"
+        # Указываем, что контент может быть в iframe (для Telegram)
+        Content-Security-Policy "frame-ancestors 'self' https://web.telegram.org"
+    }
 }
