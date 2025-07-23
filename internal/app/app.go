@@ -17,6 +17,7 @@ import (
 	"diabetbot/internal/telegram"
 
 	"github.com/gin-gonic/gin"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type App struct {
@@ -158,6 +159,24 @@ func (a *App) setupServer() error {
 		} else {
 			c.JSON(404, gin.H{"error": "Not found"})
 		}
+	})
+
+	// Telegram webhook
+	router.POST("/webhook", func(c *gin.Context) {
+		if a.bot == nil {
+			c.JSON(404, gin.H{"error": "Bot not configured"})
+			return
+		}
+		
+		var update tgbotapi.Update
+		if err := c.ShouldBindJSON(&update); err != nil {
+			log.Printf("Webhook binding error: %v", err)
+			c.JSON(400, gin.H{"error": "Invalid JSON"})
+			return
+		}
+		
+		a.bot.HandleWebhook(update)
+		c.JSON(200, gin.H{"status": "ok"})
 	})
 
 	// Health check

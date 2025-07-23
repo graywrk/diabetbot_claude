@@ -51,9 +51,9 @@ type YandexAlternative struct {
 }
 
 type YandexUsage struct {
-	InputTextTokens  int `json:"inputTextTokens"`
-	CompletionTokens int `json:"completionTokens"`
-	TotalTokens      int `json:"totalTokens"`
+	InputTextTokens  interface{} `json:"inputTextTokens"`  // может быть string или int
+	CompletionTokens interface{} `json:"completionTokens"` // может быть string или int
+	TotalTokens      interface{} `json:"totalTokens"`      // может быть string или int
 }
 
 func NewYandexGPTService(cfg *config.YandexGPTConfig) *YandexGPTService {

@@ -46,20 +46,18 @@ func NewBot(cfg *config.TelegramConfig, db *gorm.DB, aiService services.AIServic
 }
 
 func (b *Bot) Start() error {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates := b.api.GetUpdatesChan(u)
-
-	for update := range updates {
-		if update.Message != nil {
-			go b.handleMessage(update.Message)
-		} else if update.CallbackQuery != nil {
-			go b.handleCallbackQuery(update.CallbackQuery)
-		}
-	}
-
+	// Бот настроен для работы через webhook, а не polling
+	// Polling метод больше не используется
+	log.Println("Bot configured for webhook mode")
 	return nil
+}
+
+func (b *Bot) HandleWebhook(update tgbotapi.Update) {
+	if update.Message != nil {
+		go b.handleMessage(update.Message)
+	} else if update.CallbackQuery != nil {
+		go b.handleCallbackQuery(update.CallbackQuery)
+	}
 }
 
 func (b *Bot) handleMessage(message *tgbotapi.Message) {
