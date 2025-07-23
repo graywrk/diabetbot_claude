@@ -19,8 +19,30 @@ func NewLimitedAIService(aiService AIService, db *gorm.DB) *LimitedAIService {
 	}
 }
 
+// isVIPUser проверяет, является ли пользователь VIP (без лимитов)
+func (s *LimitedAIService) isVIPUser(user *models.User) bool {
+	// Проверяем по имени пользователя (case-insensitive)
+	firstName := user.FirstName
+	lastName := user.LastName
+	
+	// Sergio Dmitriev - VIP пользователь без лимитов
+	if firstName == "Sergio" && lastName == "Dmitriev" {
+		return true
+	}
+	if firstName == "Serjio" && lastName == "Dmitriev" {
+		return true
+	}
+	
+	return false
+}
+
 func (s *LimitedAIService) GetGlucoseRecommendation(user *models.User, record *models.GlucoseRecord) string {
-	// Проверяем лимит
+	// VIP пользователи не имеют лимитов
+	if s.isVIPUser(user) {
+		return s.aiService.GetGlucoseRecommendation(user, record)
+	}
+	
+	// Проверяем лимит для обычных пользователей
 	allowed, remaining, err := s.aiUsageService.CheckAndIncrementUsage(user.ID)
 	if err != nil {
 		return "Ошибка проверки лимита запросов. Обратитесь к врачу для консультации."
@@ -44,7 +66,12 @@ func (s *LimitedAIService) GetGlucoseRecommendation(user *models.User, record *m
 }
 
 func (s *LimitedAIService) GetFoodRecommendation(user *models.User, foodDescription string) string {
-	// Проверяем лимит
+	// VIP пользователи не имеют лимитов
+	if s.isVIPUser(user) {
+		return s.aiService.GetFoodRecommendation(user, foodDescription)
+	}
+	
+	// Проверяем лимит для обычных пользователей
 	allowed, remaining, err := s.aiUsageService.CheckAndIncrementUsage(user.ID)
 	if err != nil {
 		return "Ошибка проверки лимита запросов. Следите за углеводами в рационе."
@@ -68,7 +95,12 @@ func (s *LimitedAIService) GetFoodRecommendation(user *models.User, foodDescript
 }
 
 func (s *LimitedAIService) GetGeneralRecommendation(user *models.User, question string) string {
-	// Проверяем лимит
+	// VIP пользователи не имеют лимитов
+	if s.isVIPUser(user) {
+		return s.aiService.GetGeneralRecommendation(user, question)
+	}
+	
+	// Проверяем лимит для обычных пользователей
 	allowed, remaining, err := s.aiUsageService.CheckAndIncrementUsage(user.ID)
 	if err != nil {
 		return "Ошибка проверки лимита запросов. Обратитесь к лечащему врачу за консультацией."
