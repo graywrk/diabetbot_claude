@@ -171,9 +171,16 @@ func (h *APIHandler) DeleteUserData(c *gin.Context) {
 
 // Glucose endpoints
 func (h *APIHandler) GetGlucoseRecords(c *gin.Context) {
-	userID, err := strconv.ParseUint(c.Param("user_id"), 10, 32)
+	telegramID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	// Получаем пользователя по telegram_id
+	user, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
@@ -184,7 +191,7 @@ func (h *APIHandler) GetGlucoseRecords(c *gin.Context) {
 		}
 	}
 
-	records, err := h.glucoseService.GetUserRecords(uint(userID), days)
+	records, err := h.glucoseService.GetUserRecords(user.ID, days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get glucose records"})
 		return
@@ -263,9 +270,16 @@ func (h *APIHandler) DeleteGlucoseRecord(c *gin.Context) {
 }
 
 func (h *APIHandler) GetGlucoseStats(c *gin.Context) {
-	userID, err := strconv.ParseUint(c.Param("user_id"), 10, 32)
+	telegramID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	// Получаем пользователя по telegram_id
+	user, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
@@ -276,7 +290,7 @@ func (h *APIHandler) GetGlucoseStats(c *gin.Context) {
 		}
 	}
 
-	stats, err := h.glucoseService.GetUserStats(uint(userID), days)
+	stats, err := h.glucoseService.GetUserStats(user.ID, days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get glucose stats"})
 		return
@@ -287,9 +301,16 @@ func (h *APIHandler) GetGlucoseStats(c *gin.Context) {
 
 // Food endpoints
 func (h *APIHandler) GetFoodRecords(c *gin.Context) {
-	userID, err := strconv.ParseUint(c.Param("user_id"), 10, 32)
+	telegramID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	// Получаем пользователя по telegram_id
+	user, err := h.userService.GetByTelegramID(telegramID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
@@ -304,9 +325,9 @@ func (h *APIHandler) GetFoodRecords(c *gin.Context) {
 	var serviceErr error
 
 	if foodType := c.Query("type"); foodType != "" {
-		records, serviceErr = h.foodService.GetRecordsByType(uint(userID), foodType, days)
+		records, serviceErr = h.foodService.GetRecordsByType(user.ID, foodType, days)
 	} else {
-		records, serviceErr = h.foodService.GetUserRecords(uint(userID), days)
+		records, serviceErr = h.foodService.GetUserRecords(user.ID, days)
 	}
 
 	if serviceErr != nil {

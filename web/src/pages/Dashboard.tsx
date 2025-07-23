@@ -22,8 +22,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         setError(null)
 
         const [statsData, recordsData] = await Promise.all([
-          ApiService.getGlucoseStats(user.id, 7),
-          ApiService.getGlucoseRecords(user.id, 1)
+          ApiService.getGlucoseStats(user.telegram_id, 7),
+          ApiService.getGlucoseRecords(user.telegram_id, 1)
         ])
 
         setStats(statsData)
@@ -39,7 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     }
 
     fetchData()
-  }, [user.id])
+  }, [user.telegram_id])
 
   const getGlucoseStatus = (value: number): string => {
     if (value < 3.9) return 'glucose-low'
