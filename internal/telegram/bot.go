@@ -193,7 +193,7 @@ func (b *Bot) handleWebAppCommand(message *tgbotapi.Message, user *models.User) 
 		return
 	}
 
-	webAppURL := fmt.Sprintf("%s/webapp", b.config.WebAppURL)
+	webAppURL := fmt.Sprintf("%s/webapp?tma=true", b.config.WebAppURL)
 	log.Printf("WebApp URL generated: %s (from config: %s)", webAppURL, b.config.WebAppURL)
 	
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
