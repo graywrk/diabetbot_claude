@@ -14,15 +14,15 @@ import (
 )
 
 type Bot struct {
-	api             *tgbotapi.BotAPI
-	userService     *services.UserService
-	glucoseService  *services.GlucoseService
-	foodService     *services.FoodService
-	gigachatService *services.GigaChatService
-	config          *config.TelegramConfig
+	api         *tgbotapi.BotAPI
+	userService *services.UserService
+	glucoseService *services.GlucoseService
+	foodService *services.FoodService
+	aiService   services.AIService
+	config      *config.TelegramConfig
 }
 
-func NewBot(cfg *config.TelegramConfig, db *gorm.DB, gigachatService *services.GigaChatService) (*Bot, error) {
+func NewBot(cfg *config.TelegramConfig, db *gorm.DB, aiService services.AIService) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
@@ -32,12 +32,12 @@ func NewBot(cfg *config.TelegramConfig, db *gorm.DB, gigachatService *services.G
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	telegramBot := &Bot{
-		api:             bot,
-		userService:     services.NewUserService(db),
-		glucoseService:  services.NewGlucoseService(db),
-		foodService:     services.NewFoodService(db),
-		gigachatService: gigachatService,
-		config:          cfg,
+		api:            bot,
+		userService:    services.NewUserService(db),
+		glucoseService: services.NewGlucoseService(db),
+		foodService:    services.NewFoodService(db),
+		aiService:      aiService,
+		config:         cfg,
 	}
 	
 	// WebApp будет работать через обычные кнопки и команды
@@ -96,6 +96,8 @@ func (b *Bot) handleCommand(message *tgbotapi.Message, user *models.User) {
 		b.handleStatsCommand(message, user)
 	case "webapp":
 		b.handleWebAppCommand(message, user)
+	case "limits":
+		b.handleLimitsCommand(message, user)
 	default:
 		b.sendMessage(message.Chat.ID, "Неизвестная команда. Используйте /help для списка команд.")
 	}
@@ -132,7 +134,10 @@ func (b *Bot) handleHelpCommand(message *tgbotapi.Message) {
 Для подробной статистики, графиков и управления данными используйте веб-приложение - нажмите кнопку "📱 Веб-приложение"
 
 🤖 ИИ помощник:
-Бот анализирует ваши данные и дает персональные рекомендации на основе уровня сахара и питания.`
+Бот анализирует ваши данные и дает персональные рекомендации на основе уровня сахара и питания.
+
+📊 Лимиты AI:
+/limits - проверить количество оставшихся AI запросов на сегодня`
 
 	keyboard := b.getMainKeyboard()
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
@@ -235,7 +240,7 @@ func (b *Bot) handleGlucoseInput(message *tgbotapi.Message, user *models.User) {
 	}
 
 	// Получаем рекомендации от ИИ
-	recommendation := b.gigachatService.GetGlucoseRecommendation(user, record)
+	recommendation := b.aiService.GetGlucoseRecommendation(user, record)
 	
 	response := fmt.Sprintf("✅ Записал: %.1f ммоль/л\n\n🤖 %s", value, recommendation)
 	b.sendMessage(message.Chat.ID, response)
@@ -265,14 +270,14 @@ func (b *Bot) handleFoodDescription(message *tgbotapi.Message, user *models.User
 	}
 
 	// Получаем рекомендации от ИИ
-	recommendation := b.gigachatService.GetFoodRecommendation(user, message.Text)
+	recommendation := b.aiService.GetFoodRecommendation(user, message.Text)
 	
 	response := fmt.Sprintf("✅ Записал в дневник питания: %s\n\n🤖 %s", message.Text, recommendation)
 	b.sendMessage(message.Chat.ID, response)
 }
 
 func (b *Bot) handleQuestion(message *tgbotapi.Message, user *models.User) {
-	response := b.gigachatService.GetGeneralRecommendation(user, message.Text)
+	response := b.aiService.GetGeneralRecommendation(user, message.Text)
 	b.sendMessage(message.Chat.ID, "🤖 "+response)
 }
 
@@ -499,5 +504,68 @@ func (b *Bot) handleStatsSelection(chatID int64, period string, user *models.Use
 		statusEmoji, statusText)
 
 	b.sendMessage(chatID, text)
+}
+
+// handleLimitsCommand обрабатывает команду /limits
+func (b *Bot) handleLimitsCommand(message *tgbotapi.Message, user *models.User) {
+	// Создаем сервис для проверки лимитов
+	aiUsageService := services.NewAIUsageService(b.userService.GetDB())
+	
+	// Получаем количество использованных запросов
+	used, err := aiUsageService.GetUsageToday(user.ID)
+	if err != nil {
+		b.sendMessage(message.Chat.ID, "❌ Ошибка при проверке лимитов. Попробуйте позже.")
+		return
+	}
+	
+	// Получаем количество оставшихся запросов
+	remaining, err := aiUsageService.GetRemainingRequests(user.ID)
+	if err != nil {
+		b.sendMessage(message.Chat.ID, "❌ Ошибка при проверке лимитов. Попробуйте позже.")
+		return
+	}
+	
+	// Формируем прогресс-бар
+	progressBar := b.generateProgressBar(used, services.DailyAIRequestLimit)
+	
+	text := fmt.Sprintf(`📊 Ваши лимиты AI на сегодня:
+
+%s
+
+✅ Использовано: %d из %d
+📊 Осталось: %d запросов
+
+💡 Лимит обновляется каждый день в 00:00 UTC
+🤖 AI помогает анализировать уровень глюкозы, питание и отвечает на вопросы о диабете
+
+⚠️ После достижения лимита вы получите базовые рекомендации без AI анализа`, 
+		progressBar, used, services.DailyAIRequestLimit, remaining)
+
+	b.sendMessage(message.Chat.ID, text)
+}
+
+// generateProgressBar создает визуальный прогресс-бар
+func (b *Bot) generateProgressBar(used, total int) string {
+	barLength := 10
+	filledLength := (used * barLength) / total
+	if filledLength > barLength {
+		filledLength = barLength
+	}
+	
+	bar := ""
+	for i := 0; i < barLength; i++ {
+		if i < filledLength {
+			bar += "▓"
+		} else {
+			bar += "░"
+		}
+	}
+	
+	percentage := (used * 100) / total
+	if percentage > 100 {
+		percentage = 100
+	}
+	
+	return fmt.Sprintf("[%s] %d%%", bar, percentage)
 }
 

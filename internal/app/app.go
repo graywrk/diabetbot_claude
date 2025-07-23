@@ -45,8 +45,27 @@ func (a *App) Run() error {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
-	// Инициализация сервисов
-	gigachatService := services.NewGigaChatService(&a.config.GigaChat)
+	// Создаем AI сервисы с приоритетом YandexGPT
+	var aiService services.AIService
+	
+	yandexGPTService := services.NewYandexGPTService(&a.config.YandexGPT)
+	gigaChatService := services.NewGigaChatService(&a.config.GigaChat)
+	
+	// Используем YandexGPT как основной, GigaChat как fallback
+	if a.config.YandexGPT.APIKey != "" && a.config.YandexGPT.APIKey != "your_yandex_api_key_here" {
+		log.Println("Using YandexGPT as primary AI service")
+		aiService = yandexGPTService
+	} else if a.config.GigaChat.APIKey != "" && a.config.GigaChat.APIKey != "your_gigachat_api_key_here" {
+		log.Println("Using GigaChat as primary AI service")
+		aiService = gigaChatService
+	} else {
+		log.Println("No AI service configured, using fallback responses")
+		aiService = gigaChatService // Будет возвращать заглушки
+	}
+	
+	// Оборачиваем AI сервис в ограничитель запросов
+	limitedAIService := services.NewLimitedAIService(aiService, db.DB)
+	log.Printf("AI request limit enabled: %d requests per user per day", services.DailyAIRequestLimit)
 	
 	// Инициализация веб-сервера (всегда запускается)
 	if err := a.setupServer(); err != nil {
@@ -55,7 +74,7 @@ func (a *App) Run() error {
 
 	// Инициализация бота (только если есть токен)
 	if a.config.Telegram.BotToken != "" {
-		bot, err := telegram.NewBot(&a.config.Telegram, db.DB, gigachatService)
+		bot, err := telegram.NewBot(&a.config.Telegram, db.DB, limitedAIService)
 		if err != nil {
 			log.Printf("Failed to initialize bot (continuing without bot): %v", err)
 		} else {

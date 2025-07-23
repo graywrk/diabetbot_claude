@@ -36,6 +36,7 @@ func (d *Database) AutoMigrate() error {
 		&models.GlucoseRecord{},
 		&models.FoodRecord{},
 		&models.AIRecommendation{},
+		&models.AIUsage{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)

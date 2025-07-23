@@ -202,7 +202,7 @@ func (h *APIHandler) GetGlucoseRecords(c *gin.Context) {
 
 func (h *APIHandler) CreateGlucoseRecord(c *gin.Context) {
 	var req struct {
-		UserID uint    `json:"user_id" binding:"required"`
+		UserID int64   `json:"user_id" binding:"required"`
 		Value  float64 `json:"value" binding:"required,min=1,max=30"`
 		Notes  string  `json:"notes"`
 	}
@@ -212,7 +212,14 @@ func (h *APIHandler) CreateGlucoseRecord(c *gin.Context) {
 		return
 	}
 
-	record, err := h.glucoseService.CreateRecord(req.UserID, req.Value, req.Notes)
+	// Получаем пользователя по telegram_id
+	user, err := h.userService.GetByTelegramID(req.UserID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	record, err := h.glucoseService.CreateRecord(user.ID, req.Value, req.Notes)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create glucose record"})
 		return
@@ -340,7 +347,7 @@ func (h *APIHandler) GetFoodRecords(c *gin.Context) {
 
 func (h *APIHandler) CreateFoodRecord(c *gin.Context) {
 	var req struct {
-		UserID   uint     `json:"user_id" binding:"required"`
+		UserID   int64    `json:"user_id" binding:"required"`
 		FoodName string   `json:"food_name" binding:"required"`
 		FoodType string   `json:"food_type" binding:"required"`
 		Carbs    *float64 `json:"carbs"`
@@ -354,8 +361,15 @@ func (h *APIHandler) CreateFoodRecord(c *gin.Context) {
 		return
 	}
 
+	// Получаем пользователя по telegram_id
+	user, err := h.userService.GetByTelegramID(req.UserID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
 	record, err := h.foodService.CreateRecord(
-		req.UserID, req.FoodName, req.FoodType,
+		user.ID, req.FoodName, req.FoodType,
 		req.Carbs, req.Calories, req.Quantity, req.Notes,
 	)
 	if err != nil {

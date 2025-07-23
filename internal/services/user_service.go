@@ -14,6 +14,11 @@ func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{db: db}
 }
 
+// GetDB возвращает экземпляр базы данных
+func (s *UserService) GetDB() *gorm.DB {
+	return s.db
+}
+
 func (s *UserService) GetOrCreateUser(telegramID int64, username, firstName, lastName, languageCode string) (*models.User, error) {
 	var user models.User
 	

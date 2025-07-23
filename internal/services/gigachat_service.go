@@ -2,10 +2,13 @@ package services
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"diabetbot/internal/config"
@@ -71,6 +74,9 @@ func NewGigaChatService(cfg *config.GigaChatConfig) *GigaChatService {
 		apiKey:  cfg.APIKey,
 		baseURL: cfg.BaseURL,
 		client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
 			Timeout: 30 * time.Second,
 		},
 	}
@@ -81,23 +87,29 @@ func (s *GigaChatService) authenticate() error {
 		return nil // токен еще действителен
 	}
 
-	authReq := AuthRequest{Scope: "GIGACHAT_API_PERS"}
-	jsonData, err := json.Marshal(authReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal auth request: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", s.baseURL+"/api/v1/oauth", bytes.NewBuffer(jsonData))
+	// Используем локальный прокси для обхода Docker ограничений  
+	authURL := "http://172.17.0.1:8888/oauth"
+	formData := "scope=GIGACHAT_API_PERS"
+	log.Printf("GigaChat auth URL (via proxy): %s", authURL)
+	log.Printf("GigaChat auth data: %s", formData)
+	log.Printf("GigaChat API key (first 20 chars): %s", s.apiKey[:20])
+	
+	req, err := http.NewRequest("POST", authURL, strings.NewReader(formData))
 	if err != nil {
 		return fmt.Errorf("failed to create auth request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Basic "+s.apiKey)
 	req.Header.Set("RqUID", fmt.Sprintf("%d", time.Now().UnixNano()))
+	req.Header.Set("User-Agent", "DiabetBot/1.0")
+	
+	log.Printf("Request headers: %+v", req.Header)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		log.Printf("Failed to send auth request: %v", err)
 		return fmt.Errorf("failed to send auth request: %w", err)
 	}
 	defer resp.Body.Close()
@@ -106,6 +118,10 @@ func (s *GigaChatService) authenticate() error {
 	if err != nil {
 		return fmt.Errorf("failed to read auth response: %w", err)
 	}
+
+	log.Printf("Auth response status: %d", resp.StatusCode)
+	log.Printf("Auth response headers: %+v", resp.Header)
+	log.Printf("Auth response body: %s", string(body))
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("auth failed with status %d: %s", resp.StatusCode, string(body))
@@ -179,8 +195,8 @@ func (s *GigaChatService) sendChatRequest(messages []Message) (string, error) {
 }
 
 func (s *GigaChatService) GetGlucoseRecommendation(user *models.User, record *models.GlucoseRecord) string {
-	if s.apiKey == "" {
-		return "Рекомендации ИИ временно недоступны. Обратитесь к врачу для консультации."
+	if s.apiKey == "" || s.apiKey == "your_gigachat_api_key_here" {
+		return "Рекомендации ИИ временно недоступны (не настроен API ключ). Обратитесь к врачу для консультации."
 	}
 
 	diabetesTypeText := "не указан"
@@ -217,6 +233,7 @@ func (s *GigaChatService) GetGlucoseRecommendation(user *models.User, record *mo
 
 	response, err := s.sendChatRequest(messages)
 	if err != nil {
+		log.Printf("GigaChat glucose recommendation error: %v", err)
 		return "Не удалось получить рекомендацию от ИИ. Обратитесь к врачу для консультации."
 	}
 
@@ -224,8 +241,8 @@ func (s *GigaChatService) GetGlucoseRecommendation(user *models.User, record *mo
 }
 
 func (s *GigaChatService) GetFoodRecommendation(user *models.User, foodDescription string) string {
-	if s.apiKey == "" {
-		return "Рекомендации ИИ временно недоступны. Следите за углеводами в рационе."
+	if s.apiKey == "" || s.apiKey == "your_gigachat_api_key_here" {
+		return "Рекомендации ИИ временно недоступны (не настроен API ключ). Следите за углеводами в рационе."
 	}
 
 	diabetesTypeText := "не указан"
@@ -249,6 +266,7 @@ func (s *GigaChatService) GetFoodRecommendation(user *models.User, foodDescripti
 
 	response, err := s.sendChatRequest(messages)
 	if err != nil {
+		log.Printf("GigaChat food recommendation error: %v", err)
 		return "Не удалось получить рекомендацию от ИИ. Контролируйте количество углеводов в рационе."
 	}
 
@@ -256,8 +274,8 @@ func (s *GigaChatService) GetFoodRecommendation(user *models.User, foodDescripti
 }
 
 func (s *GigaChatService) GetGeneralRecommendation(user *models.User, question string) string {
-	if s.apiKey == "" {
-		return "Рекомендации ИИ временно недоступны. Обратитесь к лечащему врачу за консультацией."
+	if s.apiKey == "" || s.apiKey == "your_gigachat_api_key_here" {
+		return "Рекомендации ИИ временно недоступны (не настроен API ключ). Обратитесь к лечащему врачу за консультацией."
 	}
 
 	diabetesTypeText := "не указан"
@@ -281,6 +299,7 @@ func (s *GigaChatService) GetGeneralRecommendation(user *models.User, question s
 
 	response, err := s.sendChatRequest(messages)
 	if err != nil {
+		log.Printf("GigaChat general recommendation error: %v", err)
 		return "Не удалось получить ответ от ИИ. Рекомендую обратиться к лечащему врачу за консультацией."
 	}
 

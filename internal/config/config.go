@@ -5,10 +5,11 @@ import (
 )
 
 type Config struct {
-	Telegram TelegramConfig
-	GigaChat GigaChatConfig
-	Database DatabaseConfig
-	Server   ServerConfig
+	Telegram  TelegramConfig
+	GigaChat  GigaChatConfig
+	YandexGPT YandexGPTConfig
+	Database  DatabaseConfig
+	Server    ServerConfig
 }
 
 type TelegramConfig struct {
@@ -20,6 +21,11 @@ type TelegramConfig struct {
 type GigaChatConfig struct {
 	APIKey  string
 	BaseURL string
+}
+
+type YandexGPTConfig struct {
+	APIKey   string
+	FolderID string
 }
 
 type DatabaseConfig struct {
@@ -47,6 +53,10 @@ func Load() *Config {
 		GigaChat: GigaChatConfig{
 			APIKey:  getEnv("GIGACHAT_API_KEY", ""),
 			BaseURL: getEnv("GIGACHAT_BASE_URL", "https://gigachat.devices.sberbank.ru"),
+		},
+		YandexGPT: YandexGPTConfig{
+			APIKey:   getEnv("YANDEXGPT_API_KEY", ""),
+			FolderID: getEnv("YANDEXGPT_FOLDER_ID", ""),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
