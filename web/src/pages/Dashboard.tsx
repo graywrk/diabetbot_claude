@@ -4,6 +4,7 @@ import { ApiService } from '../services/api'
 import { User, GlucoseStats, GlucoseRecord } from '../types'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import MiniChart from '../components/MiniChart'
 
 interface DashboardProps {
   user: User
@@ -12,6 +13,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [stats, setStats] = useState<GlucoseStats | null>(null)
   const [recentRecord, setRecentRecord] = useState<GlucoseRecord | null>(null)
+  const [recentRecords, setRecentRecords] = useState<GlucoseRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,10 +25,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
         const [statsData, recordsData] = await Promise.all([
           ApiService.getGlucoseStats(user.telegram_id, 7),
-          ApiService.getGlucoseRecords(user.telegram_id, 1)
+          ApiService.getGlucoseRecords(user.telegram_id, 10) // Загружаем больше записей для мини-графика
         ])
 
         setStats(statsData)
+        setRecentRecords(recordsData)
         if (recordsData.length > 0) {
           setRecentRecord(recordsData[0])
         }
@@ -112,24 +115,36 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
       {stats && stats.count > 0 && (
         <div className="card" data-testid="stats-card">
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>
-            Статистика за 7 дней
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '18px' }}>
+                Статистика за 7 дней
+              </h3>
+              <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+                Тренд и основные показатели
+              </p>
+            </div>
+            {recentRecords.length > 1 && (
+              <div style={{ width: '120px' }}>
+                <MiniChart records={recentRecords} />
+              </div>
+            )}
+          </div>
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-value">{stats.average.toFixed(1)}</div>
+              <div className="stat-value" style={{ color: '#3b82f6' }}>{stats.average.toFixed(1)}</div>
               <div className="stat-label">Средний</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{stats.min.toFixed(1)}</div>
+              <div className="stat-value" style={{ color: stats.min < 3.9 ? '#ef4444' : '#6b7280' }}>{stats.min.toFixed(1)}</div>
               <div className="stat-label">Минимум</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{stats.max.toFixed(1)}</div>
+              <div className="stat-value" style={{ color: stats.max > 7.8 ? '#f59e0b' : '#6b7280' }}>{stats.max.toFixed(1)}</div>
               <div className="stat-label">Максимум</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{stats.count}</div>
+              <div className="stat-value" style={{ color: '#10b981' }}>{stats.count}</div>
               <div className="stat-label">Измерений</div>
             </div>
           </div>
