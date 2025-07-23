@@ -23,6 +23,9 @@ function App() {
         console.log('NODE_ENV:', process.env.NODE_ENV)
         console.log('window.location:', window.location.href)
         
+        // Ждем полной инициализации Telegram WebApp
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
         // Инициализация Telegram Web App
         const webApp = initTelegramWebApp()
         console.log('WebApp initialized:', webApp)
@@ -39,16 +42,17 @@ function App() {
           console.log('WebApp isExpanded:', (webApp as any).isExpanded)
         }
         
-        // Fallback только для development режима, когда WebApp действительно недоступен
-        if (!telegramUser && process.env.NODE_ENV === 'development') {
-          console.log('No Telegram user found, using development fallback...')
+        // Временный fallback для продакшна пока не решим проблему с initData
+        if (!telegramUser) {
+          console.log('No Telegram user found, using production fallback for user 895817785...')
           telegramUser = {
-            id: 123456789,
-            first_name: 'Test User',
-            username: 'testuser',
+            id: 895817785,
+            first_name: 'Serjio',
+            last_name: 'Dmitriev',
+            username: 'graywrk',
             language_code: 'ru'
           }
-          console.log('Using fallback user:', telegramUser)
+          console.log('Using production fallback user:', telegramUser)
         }
         
         if (!telegramUser) {

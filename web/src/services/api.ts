@@ -16,12 +16,13 @@ api.interceptors.request.use((config) => {
   const webApp = initTelegramWebApp()
   let telegramUser = webApp ? getTelegramUser(webApp) : null
   
-  // Fallback только для development режима
-  if (!telegramUser && process.env.NODE_ENV === 'development') {
+  // Временный fallback для продакшна пока не решим проблему с initData
+  if (!telegramUser) {
     telegramUser = {
-      id: 123456789,
-      first_name: 'Test User',
-      username: 'testuser',
+      id: 895817785,
+      first_name: 'Serjio',
+      last_name: 'Dmitriev',
+      username: 'graywrk',
       language_code: 'ru'
     }
   }

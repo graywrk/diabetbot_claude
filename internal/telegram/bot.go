@@ -40,10 +40,7 @@ func NewBot(cfg *config.TelegramConfig, db *gorm.DB, gigachatService *services.G
 		config:          cfg,
 	}
 	
-	// Устанавливаем Menu Button для WebApp если URL настроен
-	if cfg.WebAppURL != "" {
-		telegramBot.setupMenuButton()
-	}
+	// WebApp будет работать через обычные кнопки и команды
 	
 	return telegramBot, nil
 }
@@ -200,7 +197,7 @@ func (b *Bot) handleWebAppCommand(message *tgbotapi.Message, user *models.User) 
 		return
 	}
 
-	webAppURL := fmt.Sprintf("%s/webapp?tma=true", b.config.WebAppURL)
+	webAppURL := fmt.Sprintf("%s/webapp", b.config.WebAppURL)
 	log.Printf("WebApp URL generated: %s (from config: %s)", webAppURL, b.config.WebAppURL)
 	
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -504,24 +501,3 @@ func (b *Bot) handleStatsSelection(chatID int64, period string, user *models.Use
 	b.sendMessage(chatID, text)
 }
 
-// setupMenuButton устанавливает Menu Button для WebApp
-func (b *Bot) setupMenuButton() {
-	webAppURL := fmt.Sprintf("%s/webapp", b.config.WebAppURL)
-	
-	// Создаем запрос для установки Menu Button
-	menuButton := tgbotapi.SetChatMenuButtonConfig{
-		ChatID: 0, // 0 означает для всех чатов по умолчанию
-		MenuButton: &tgbotapi.MenuButton{
-			Type:   "web_app",
-			Text:   "📱 Открыть приложение",
-			WebApp: &tgbotapi.WebAppInfo{URL: webAppURL},
-		},
-	}
-	
-	_, err := b.api.Request(menuButton)
-	if err != nil {
-		log.Printf("Failed to set menu button: %v", err)
-	} else {
-		log.Printf("Menu button set successfully for WebApp: %s", webAppURL)
-	}
-}

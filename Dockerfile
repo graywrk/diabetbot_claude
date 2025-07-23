@@ -14,8 +14,9 @@ FROM golang:1.24-alpine AS backend-builder
 RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
+RUN go mod tidy
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/main.go
