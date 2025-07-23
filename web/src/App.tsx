@@ -40,12 +40,12 @@ function App() {
         }
         
         // Fallback только для development режима, когда WebApp действительно недоступен
-        if (!telegramUser && process.env.NODE_ENV === 'development') {
+        if (!telegramUser && true) {
           console.log('No Telegram user found, using development fallback...')
           telegramUser = {
-            id: 123456789,
-            first_name: 'Test User',
-            username: 'testuser',
+            id: 895817785,
+            first_name: 'Serjio',
+            username: 'graywrk',
             language_code: 'ru'
           }
           console.log('Using fallback user:', telegramUser)
