@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DiabetBot - это Telegram бот и веб-приложение для контроля диабета, написанные на Go 1.24 и React. Проект использует GigaChat API для предоставления персонализированных рекомендаций пользователям.
 
+## Communication Guidelines
+
+- общайся на русском
+
 ## Architecture
 
 **Backend (Go):**

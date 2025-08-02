@@ -13,6 +13,7 @@ import (
 	"diabetbot/internal/config"
 	"diabetbot/internal/database"
 	"diabetbot/internal/handlers"
+	"diabetbot/internal/middleware"
 	"diabetbot/internal/services"
 	"diabetbot/internal/telegram"
 
@@ -115,7 +116,7 @@ func (a *App) setupServer() error {
 	router.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Telegram-Init-Data")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Telegram-Init-Data, X-Telegram-Username, X-Telegram-First-Name, X-Telegram-Last-Name, X-Telegram-Language-Code")
 		
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -128,8 +129,9 @@ func (a *App) setupServer() error {
 	// Инициализация обработчиков API
 	apiHandler := handlers.NewAPIHandler(a.db.DB)
 	
-	// API роуты
+	// API роуты с Telegram авторизацией
 	api := router.Group("/api/v1")
+	api.Use(middleware.TelegramAuthMiddleware(a.config.Telegram.BotToken))
 	{
 		api.GET("/user/:telegram_id", apiHandler.GetUser)
 		api.PUT("/user/:telegram_id", apiHandler.UpdateUser)

@@ -14,24 +14,22 @@ const api = axios.create({
 // Interceptor для добавления Telegram данных в заголовки
 api.interceptors.request.use((config) => {
   const webApp = initTelegramWebApp()
-  let telegramUser = webApp ? getTelegramUser(webApp) : null
   
-  // Временный fallback для продакшна пока не решим проблему с initData
-  if (!telegramUser) {
-    telegramUser = {
-      id: 895817785,
-      first_name: 'Serjio',
-      last_name: 'Dmitriev',
-      username: 'graywrk',
-      language_code: 'ru'
+  if (webApp) {
+    // Отправляем initData для проверки подписи
+    const initData = (webApp as any).initData
+    if (initData) {
+      config.headers['X-Telegram-Init-Data'] = initData
     }
-  }
-  
-  if (telegramUser) {
-    config.headers['X-Telegram-Username'] = telegramUser.username || ''
-    config.headers['X-Telegram-First-Name'] = telegramUser.first_name || ''
-    config.headers['X-Telegram-Last-Name'] = telegramUser.last_name || ''
-    config.headers['X-Telegram-Language-Code'] = telegramUser.language_code || ''
+    
+    // Также отправляем отдельные поля для совместимости
+    const telegramUser = getTelegramUser(webApp)
+    if (telegramUser) {
+      config.headers['X-Telegram-Username'] = telegramUser.username || ''
+      config.headers['X-Telegram-First-Name'] = telegramUser.first_name || ''
+      config.headers['X-Telegram-Last-Name'] = telegramUser.last_name || ''
+      config.headers['X-Telegram-Language-Code'] = telegramUser.language_code || ''
+    }
   }
   
   return config

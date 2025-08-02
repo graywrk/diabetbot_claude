@@ -42,21 +42,10 @@ function App() {
           console.log('WebApp isExpanded:', (webApp as any).isExpanded)
         }
         
-        // Временный fallback для продакшна пока не решим проблему с initData
+        // Проверяем данные пользователя из Telegram
         if (!telegramUser) {
-          console.log('No Telegram user found, using production fallback for user 895817785...')
-          telegramUser = {
-            id: 895817785,
-            first_name: 'Serjio',
-            last_name: 'Dmitriev',
-            username: 'graywrk',
-            language_code: 'ru'
-          }
-          console.log('Using production fallback user:', telegramUser)
-        }
-        
-        if (!telegramUser) {
-          throw new Error('Не удалось получить данные пользователя из Telegram')
+          console.log('No Telegram user found - приложение должно запускаться только из Telegram')
+          throw new Error('Приложение должно запускаться только через Telegram бот')
         }
 
         // Получаем или создаем пользователя через API
